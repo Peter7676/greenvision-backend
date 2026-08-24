@@ -292,6 +292,86 @@ def _normalize_result(result: dict) -> dict:
 
     return result
 
+def _journal_context_text(journal_entries: list | None) -> str:
+    if not journal_entries:
+        return "Ingen tidigare greenjournal finns registrerad."
+
+    lines: list[str] = []
+
+    for entry in journal_entries:
+        if not isinstance(entry, dict):
+            continue
+
+        entry_type = str(
+            entry.get("entry_type", "observation")
+        )
+
+        title = str(
+            entry.get("title", "")
+        )
+
+        note = str(
+            entry.get("note", "")
+        )
+
+        product_name = str(
+            entry.get("product_name") or ""
+        )
+
+        dose = str(
+            entry.get("dose") or ""
+        )
+
+        area = str(
+            entry.get("area") or ""
+        )
+
+        created_at = str(
+            entry.get("created_at") or ""
+        )
+
+        details = [
+            f"Typ: {entry_type}",
+            f"Rubrik: {title}",
+        ]
+
+        if product_name:
+            details.append(
+                f"Produkt: {product_name}"
+            )
+
+        if dose:
+            details.append(
+                f"Dos: {dose}"
+            )
+
+        if area:
+            details.append(
+                f"Område: {area}"
+            )
+
+        if note:
+            details.append(
+                f"Anteckning: {note}"
+            )
+
+        if created_at:
+            details.append(
+                f"Datum: {created_at}"
+            )
+
+        lines.append(
+            "- " + " | ".join(details)
+        )
+
+    if not lines:
+        return "Ingen tidigare greenjournal finns registrerad."
+
+    return (
+        "Tidigare journalposter för denna green:\n"
+        + "\n".join(lines)
+    )
+
 
 async def analyze_green_image(
     image_bytes: bytes,
@@ -300,11 +380,14 @@ async def analyze_green_image(
     green_number: int,
     weather_context: dict | None = None,
     vision_context: dict | None = None,
+    journal_entries: list | None = None,
 ):
+    
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     season_context = _season_context()
     weather_text = _weather_context_text(weather_context)
     vision_text = _vision_context_text(vision_context)
+    journal_text = _journal_context_text(journal_entries)
 
     prompt = f"""
 Du är expert på nordiska golfgreener, grässjukdomar, färgförändringar,
@@ -319,6 +402,9 @@ Green: {green_number}
 {weather_text}
 
 {vision_text}
+
+{journal_text}
+
 
 Viktiga regler:
 - GreenVision-systemet räknar själv fram GreenVision Score.
